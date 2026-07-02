@@ -129,7 +129,7 @@
       background: #fef3c7;
     }
 
-    .settled {
+    .scored {
       color: #1e40af;
       background: #dbeafe;
     }
@@ -194,127 +194,182 @@
   </main>
 
   <script>
-    let polls = JSON.parse(localStorage.getItem("polls")) || [];
+  let polls = [];
 
-    function savePolls() {
-      localStorage.setItem("polls", JSON.stringify(polls));
-    }
+  async function loadPolls() {
+    const response = await fetch("/api/polls");
+    polls = await response.json();
+    renderPolls();
+  }
 
-    function createPollCard(poll, section) {
-      const card = document.createElement("div");
-      card.className = "poll";
+  async function createPoll(event) {
+    event.preventDefault();
 
-      card.innerHTML = `
-        <h3>${poll.question}</h3>
-        <p><strong>Option 1:</strong> ${poll.option1}</p>
-        <p><strong>Option 2:</strong> ${poll.option2}</p>
-        <p><strong>Deadline:</strong> ${new Date(poll.deadline).toLocaleString()}</p>
-        <span class="status ${poll.status}">${poll.status}</span>
-      `;
+    const question = document.getElementById("question").value;
+    const option1 = document.getElementById("option1").value;
+    const option2 = document.getElementById("option2").value;
+    const deadline = document.getElementById("deadline").value;
 
-      if (poll.status === "open") {
-        const closeButton = document.createElement("button");
-        closeButton.className = "close-button";
-        closeButton.textContent = "Close Poll";
-
-        closeButton.addEventListener("click", () => {
-          poll.status = "closed";
-          savePolls();
-          renderPolls();
-        });
-
-        card.appendChild(closeButton);
-      }
-
-      if (poll.status === "closed") {
-        const select = document.createElement("select");
-        select.innerHTML = `
-          <option value="">Choose the correct result</option>
-          <option value="${poll.option1}">${poll.option1}</option>
-          <option value="${poll.option2}">${poll.option2}</option>
-        `;
-
-        const resultButton = document.createElement("button");
-        resultButton.className = "result-button";
-        resultButton.textContent = "Save Result";
-
-        resultButton.addEventListener("click", () => {
-          if (select.value === "") {
-            alert("Please choose the correct result first.");
-            return;
-          }
-
-          poll.correctOption = select.value;
-          poll.status = "settled";
-          savePolls();
-          renderPolls();
-        });
-
-        card.appendChild(select);
-        card.appendChild(resultButton);
-      }
-
-      if (poll.status === "settled") {
-        const result = document.createElement("p");
-        result.innerHTML = `<strong>Correct Result:</strong> ${poll.correctOption}`;
-        card.appendChild(result);
-      }
-
-      section.appendChild(card);
-    }
-
-    function renderPolls() {
-      const openPolls = document.getElementById("openPolls");
-      const closedPolls = document.getElementById("closedPolls");
-      const settledPolls = document.getElementById("settledPolls");
-
-      openPolls.innerHTML = "";
-      closedPolls.innerHTML = "";
-      settledPolls.innerHTML = "";
-
-      const open = polls.filter(poll => poll.status === "open");
-      const closed = polls.filter(poll => poll.status === "closed");
-      const settled = polls.filter(poll => poll.status === "settled");
-
-      if (open.length === 0) {
-        openPolls.innerHTML = `<p class="empty-message">There are no open polls.</p>`;
-      } else {
-        open.forEach(poll => createPollCard(poll, openPolls));
-      }
-
-      if (closed.length === 0) {
-        closedPolls.innerHTML = `<p class="empty-message">There are no closed polls waiting for a result.</p>`;
-      } else {
-        closed.forEach(poll => createPollCard(poll, closedPolls));
-      }
-
-      if (settled.length === 0) {
-        settledPolls.innerHTML = `<p class="empty-message">There are no settled polls yet.</p>`;
-      } else {
-        settled.forEach(poll => createPollCard(poll, settledPolls));
-      }
-    }
-
-    document.getElementById("pollForm").addEventListener("submit", (event) => {
-      event.preventDefault();
-
-      const poll = {
-        id: Date.now(),
-        question: document.getElementById("question").value,
-        option1: document.getElementById("option1").value,
-        option2: document.getElementById("option2").value,
-        deadline: document.getElementById("deadline").value,
-        status: "open",
-        correctOption: null
-      };
-
-      polls.push(poll);
-      savePolls();
-      event.target.reset();
-      renderPolls();
+    const response = await fetch("/api/polls", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        question,
+        option1,
+        option2,
+        deadline
+      })
     });
 
-    renderPolls();
-  </script>
+    const data = await response.json();
+
+    if (!response.ok) {
+      alert(data.message || "Could not create poll.");
+      return;
+    }
+
+    event.target.reset();
+    await loadPolls();
+  }
+
+  async function closePoll(pollId) {
+    const response = await fetch(`/api/polls/${pollId}/close`, {
+      method: "PATCH"
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      alert(data.message || "Could not close poll.");
+      return;
+    }
+
+    await loadPolls();
+  }
+
+  async function saveResult(pollId, correctAnswer) {
+    if (!correctAnswer) {
+      alert("Please choose the correct result first.");
+      return;
+    }
+
+    const response = await fetch(`/api/polls/${pollId}/result`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        correctAnswer
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      alert(data.message || "Could not save result.");
+      return;
+    }
+
+    await loadPolls();
+  }
+
+  function formatDeadline(deadline) {
+    if (!deadline) {
+      return "No deadline set";
+    }
+
+    return new Date(deadline).toLocaleString();
+  }
+
+  function createPollCard(poll, section) {
+    const card = document.createElement("div");
+    card.className = "poll";
+
+    card.innerHTML = `
+      <h3>${poll.question}</h3>
+      <p><strong>Option 1:</strong> ${poll.option_1 || "Not available"}</p>
+      <p><strong>Option 2:</strong> ${poll.option_2 || "Not available"}</p>
+      <p><strong>Deadline:</strong> ${formatDeadline(poll.deadline)}</p>
+      <span class="status ${poll.status}">${poll.status}</span>
+    `;
+
+    if (poll.status === "open") {
+      const closeButton = document.createElement("button");
+      closeButton.className = "close-button";
+      closeButton.textContent = "Close Poll";
+      closeButton.addEventListener("click", () => closePoll(poll.poll_id));
+      card.appendChild(closeButton);
+    }
+
+    if (poll.status === "closed" && poll.option_1 && poll.option_2) {
+      const select = document.createElement("select");
+      select.innerHTML = `
+        <option value="">Choose the correct result</option>
+        <option value="${poll.option_1}">${poll.option_1}</option>
+        <option value="${poll.option_2}">${poll.option_2}</option>
+      `;
+
+      const resultButton = document.createElement("button");
+      resultButton.className = "result-button";
+      resultButton.textContent = "Save Result";
+
+      resultButton.addEventListener("click", () => {
+        saveResult(poll.poll_id, select.value);
+      });
+
+      card.appendChild(select);
+      card.appendChild(resultButton);
+    }
+
+    if (poll.status === "scored") {
+      const result = document.createElement("p");
+      result.innerHTML = `
+        <strong>Correct Result:</strong>
+        ${poll.correct_answer || "Not available"}
+      `;
+      card.appendChild(result);
+    }
+
+    section.appendChild(card);
+  }
+
+  function renderPolls() {
+    const openPolls = document.getElementById("openPolls");
+    const closedPolls = document.getElementById("closedPolls");
+    const settledPolls = document.getElementById("settledPolls");
+
+    openPolls.innerHTML = "";
+    closedPolls.innerHTML = "";
+    settledPolls.innerHTML = "";
+
+    const open = polls.filter((poll) => poll.status === "open");
+    const closed = polls.filter((poll) => poll.status === "closed");
+    const scored = polls.filter((poll) => poll.status === "scored");
+
+    if (open.length === 0) {
+      openPolls.innerHTML = `<p class="empty-message">There are no open polls.</p>`;
+    } else {
+      open.forEach((poll) => createPollCard(poll, openPolls));
+    }
+
+    if (closed.length === 0) {
+      closedPolls.innerHTML = `<p class="empty-message">There are no closed polls waiting for a result.</p>`;
+    } else {
+      closed.forEach((poll) => createPollCard(poll, closedPolls));
+    }
+
+    if (scored.length === 0) {
+      settledPolls.innerHTML = `<p class="empty-message">There are no scored polls yet.</p>`;
+    } else {
+      scored.forEach((poll) => createPollCard(poll, settledPolls));
+    }
+  }
+
+  document.getElementById("pollForm").addEventListener("submit", createPoll);
+
+  loadPolls();
+</script>
 </body>
 </html>
