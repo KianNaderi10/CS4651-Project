@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leaderboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0B1222;
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    padding: 32px 16px;
+  }
+
+  .container { max-width: 680px; margin: 0 auto; }
+
+  header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .eyebrow {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: #4A9EFF;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(28px, 5vw, 42px);
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    color: #fff;
+  }
+
+  .refresh-btn {
+    margin-top: 16px;
+    background: transparent;
+    border: 1px solid #4A9EFF44;
+    color: #4A9EFF;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    padding: 8px 20px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .refresh-btn:hover { background: #4A9EFF18; border-color: #4A9EFF; }
+
+  /* Podium */
+  .podium {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+
+  .podium-slot {
+    flex: 1;
+    max-width: 180px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .podium-slot.first { order: 2; }
+  .podium-slot.second { order: 1; }
+  .podium-slot.third { order: 3; }
+
+  .medal {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: 20px;
+  }
+  .first .medal  { background: linear-gradient(135deg, #FFD700, #FFA500); color: #000; width: 64px; height: 64px; font-size: 24px; box-shadow: 0 0 24px #FFD70066; }
+  .second .medal { background: linear-gradient(135deg, #C0C0C0, #909090); color: #000; }
+  .third .medal  { background: linear-gradient(135deg, #CD7F32, #8B5A1A); color: #fff; }
+
+  .podium-name {
+    font-weight: 600;
+    font-size: 14px;
+    text-align: center;
+    color: #fff;
+  }
+
+  .podium-pts {
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    color: #4A9EFF;
+  }
+
+  .podium-bar {
+    width: 100%;
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 0;
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: #ffffff88;
+  }
+  .first .podium-bar  { background: #FFD70022; border: 1px solid #FFD70044; height: 80px; }
+  .second .podium-bar { background: #C0C0C022; border: 1px solid #C0C0C044; height: 56px; }
+  .third .podium-bar  { background: #CD7F3222; border: 1px solid #CD7F3244; height: 40px; }
+
+  /* Rankings table */
+  .rankings {
+    background: #131d33;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid #ffffff0f;
+  }
+
+  .rankings-header {
+    display: grid;
+    grid-template-columns: 56px 1fr 120px;
+    padding: 14px 20px;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #ffffff44;
+    border-bottom: 1px solid #ffffff0f;
+    font-family: 'Orbitron', monospace;
+  }
+
+  .ranking-row {
+    display: grid;
+    grid-template-columns: 56px 1fr 120px;
+    padding: 16px 20px;
+    align-items: center;
+    border-bottom: 1px solid #ffffff07;
+    transition: background 0.15s;
+  }
+  .ranking-row:last-child { border-bottom: none; }
+  .ranking-row:hover { background: #ffffff07; }
+
+  .rank-num {
+    font-family: 'Orbitron', monospace;
+    font-weight: 700;
+    font-size: 15px;
+    color: #ffffff44;
+  }
+
+  .player-name {
+    font-weight: 500;
+    font-size: 15px;
+    color: #fff;
+  }
+
+  .points {
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    color: #4A9EFF;
+    text-align: right;
+  }
+
+  .pts-label {
+    font-size: 10px;
+    color: #ffffff44;
+    margin-left: 4px;
+  }
+
+  .empty {
+    text-align: center;
+    padding: 48px 20px;
+    color: #ffffff44;
+    font-size: 14px;
+  }
+
+  .status-bar {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 12px;
+    color: #ffffff33;
+  }
+  .dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #4A9EFF;
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="eyebrow">Prediction Poll Game</div>
+    <h1>Leaderboard</h1>
+    <button class="refresh-btn" onclick="loadLeaderboard()">↻ Refresh</button>
+  </header>
+
+  <div class="podium" id="podium"></div>
+
+  <div class="rankings">
+    <div class="rankings-header">
+      <span>Rank</span>
+      <span>Player</span>
+      <span style="text-align:right">Points</span>
+    </div>
+    <div id="rankings-body"></div>
+  </div>
+
+  <div class="status-bar">
+    <span class="dot"></span>
+    <span id="status-text">Loading...</span>
+  </div>
+</div>
+
+<script>
+  // TODO: update this URL to your EC2 public IP when deployed
+  const API_BASE = 'http://18.225.180.51:3000/api';
+
+  const MEDAL_CLASSES = ['first', 'second', 'third'];
+  const POSITIONS = ['1st', '2nd', '3rd'];
+
+  async function loadLeaderboard() {
+    document.getElementById('status-text').textContent = 'Refreshing...';
+    try {
+      const res = await fetch(`${API_BASE}/leaderboard`);
+      const data = await res.json();
+      renderPodium(data.slice(0, 3));
+      renderRankings(data.slice(3));
+      document.getElementById('status-text').textContent = `Updated just now · ${data.length} players`;
+    } catch (err) {
+      document.getElementById('status-text').textContent = 'Could not reach server';
+      document.getElementById('rankings-body').innerHTML = '<div class="empty">Unable to load leaderboard. Make sure the server is running.</div>';
+    }
+  }
+
+  function renderPodium(top3) {
+    const podium = document.getElementById('podium');
+    if (top3.length === 0) { podium.innerHTML = ''; return; }
+    podium.innerHTML = top3.map((p, i) => `
+      <div class="podium-slot ${MEDAL_CLASSES[i]}">
+        <div class="medal">${i + 1}</div>
+        <div class="podium-name">${p.username}</div>
+        <div class="podium-pts">${p.total_points} pts</div>
+        <div class="podium-bar">${POSITIONS[i]}</div>
+      </div>
+    `).join('');
+  }
+
+  function renderRankings(rest) {
+    const body = document.getElementById('rankings-body');
+    if (rest.length === 0) {
+      body.innerHTML = '<div class="empty">No other players yet.</div>';
+      return;
+    }
+    body.innerHTML = rest.map(p => `
+      <div class="ranking-row">
+        <span class="rank-num">#${p.player_rank}</span>
+        <span class="player-name">${p.username}</span>
+        <span class="points">${p.total_points}<span class="pts-label">pts</span></span>
+      </div>
+    `).join('');
+  }
+
+  loadLeaderboard();
+</script>
+</body>
+</html>
