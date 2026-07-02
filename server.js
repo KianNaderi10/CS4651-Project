@@ -97,7 +97,7 @@ app.patch('/api/polls/:id/close', (req, res) => {
 // This POST replaces the old admin PATCH /result route.
 // It sets the correct answer, scores every prediction, and marks the poll scored, all in one step.
 
-app.post('/api/polls/:id/result', (req, res) => {
+app.patch('/api/polls/:id/result', (req, res) => {
   const pollId = req.params.id;
   const { correctAnswer } = req.body;
   if (!correctAnswer) return res.status(400).json({ error: 'correctAnswer is required' });
