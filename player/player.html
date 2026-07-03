@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Predict - Player</title>
+<style>
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #e8e8e8;
+    margin: 0;
+    padding: 0;
+    color: #222;
+  }
+
+  #header {
+    background: #3b5998;
+    color: white;
+    padding: 15px 20px;
+    font-size: 22px;
+    font-weight: bold;
+    border-bottom: 3px solid #29477a;
+  }
+
+  #container {
+    max-width: 600px;
+    margin: 30px auto;
+    padding: 0 10px;
+  }
+
+  .box {
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+
+  .box h2 {
+    margin-top: 0;
+    font-size: 16px;
+    background: #f0f0f0;
+    padding: 8px;
+    border: 1px solid #ddd;
+    margin: -15px -15px 15px -15px;
+  }
+
+  label {
+    display: block;
+    margin-top: 10px;
+    font-size: 13px;
+    font-weight: bold;
+  }
+
+  input {
+    width: 100%;
+    padding: 6px;
+    margin-top: 3px;
+    border: 1px solid #999;
+    box-sizing: border-box;
+    font-size: 13px;
+  }
+
+  button {
+    margin-top: 12px;
+    padding: 6px 14px;
+    background: #3b5998;
+    color: white;
+    border: 1px solid #29477a;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+
+  button:hover {
+    background: #29477a;
+  }
+
+  .msg {
+    margin-top: 10px;
+    font-size: 13px;
+    padding: 6px;
+  }
+
+  .msg.success {
+    background: #dff0d8;
+    border: 1px solid #b2d8a0;
+    color: #3c763d;
+  }
+
+  .msg.error {
+    background: #f2dede;
+    border: 1px solid #ebccd1;
+    color: #a94442;
+  }
+
+  .poll {
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin-top: 10px;
+    background: #fafafa;
+  }
+
+  .poll h3 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+  }
+
+  #player-status {
+    font-size: 13px;
+    margin-bottom: 15px;
+    padding: 8px;
+    background: #fffbe0;
+    border: 1px solid #e0d9a0;
+  }
+</style>
+</head>
+<body>
+
+<div id="header">Predict: Live Polls</div>
+
+<div id="container">
+
+  <div id="player-status">Not logged in.</div>
+
+  <div class="box">
+    <h2>Register</h2>
+    <label for="reg-name">Name</label>
+    <input type="text" id="reg-name">
+    <label for="reg-email">Email</label>
+    <input type="text" id="reg-email">
+    <label for="reg-password">Password</label>
+    <input type="password" id="reg-password">
+    <button onclick="register()">Register</button>
+    <div id="reg-msg"></div>
+  </div>
+
+  <div class="box">
+    <h2>Login</h2>
+    <label for="login-email">Email</label>
+    <input type="text" id="login-email">
+    <label for="login-password">Password</label>
+    <input type="password" id="login-password">
+    <button onclick="login()">Login</button>
+    <div id="login-msg"></div>
+  </div>
+
+  <div class="box">
+    <h2>Open Polls</h2>
+    <button onclick="loadPolls()">Refresh Polls</button>
+    <div id="polls-list"></div>
+  </div>
+
+</div>
+
+<script>
+  const API = "http://localhost:3000";
+  let currentPlayerId = null;
+  let currentPlayerName = null;
+
+  function showMsg(id, text, isError) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = "msg " + (isError ? "error" : "success");
+  }
+
+  async function register() {
+    const name = document.getElementById("reg-name").value;
+    const email = document.getElementById("reg-email").value;
+    const password = document.getElementById("reg-password").value;
+
+    try {
+      const res = await fetch(API + "/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showMsg("reg-msg", "Registered. You can log in now.", false);
+      } else {
+        showMsg("reg-msg", data.error || "Something went wrong.", true);
+      }
+    } catch (err) {
+      showMsg("reg-msg", "Could not reach server.", true);
+    }
+  }
+
+  async function login() {
+    const email = document.getElementById("login-email").value;
+    const password = document.getElementById("login-password").value;
+
+    try {
+      const res = await fetch(API + "/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        currentPlayerId = data.playerId;
+        currentPlayerName = data.name;
+        document.getElementById("player-status").textContent = "Logged in as " + currentPlayerName + " (id " + currentPlayerId + ")";
+        showMsg("login-msg", "Login success.", false);
+        loadPolls();
+      } else {
+        showMsg("login-msg", data.error || "Login failed.", true);
+      }
+    } catch (err) {
+      showMsg("login-msg", "Could not reach server.", true);
+    }
+  }
+
+  async function loadPolls() {
+    const listEl = document.getElementById("polls-list");
+    listEl.innerHTML = "Loading...";
+
+    try {
+      const res = await fetch(API + "/polls");
+      const polls = await res.json();
+
+      if (!polls.length) {
+        listEl.innerHTML = "<p>No open polls right now.</p>";
+        return;
+      }
+
+      listEl.innerHTML = "";
+      polls.forEach(poll => {
+        const div = document.createElement("div");
+        div.className = "poll";
+        div.innerHTML = `
+          <h3>${poll.question}</h3>
+          <button onclick="submitPrediction(${poll.poll_id}, '${poll.option_1}')">${poll.option_1}</button>
+          <button onclick="submitPrediction(${poll.poll_id}, '${poll.option_2}')">${poll.option_2}</button>
+        `;
+        listEl.appendChild(div);
+      });
+    } catch (err) {
+      listEl.innerHTML = "<p>Could not load polls.</p>";
+    }
+  }
+
+  async function submitPrediction(pollId, answer) {
+    if (!currentPlayerId) {
+      alert("Log in first.");
+      return;
+    }
+
+    try {
+      const res = await fetch(API + "/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ player_id: currentPlayerId, poll_id: pollId, answer })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("Prediction submitted.");
+      } else {
+        alert(data.error || "Could not submit.");
+      }
+    } catch (err) {
+      alert("Could not reach server.");
+    }
+  }
+</script>
+
+</body>
+</html>
