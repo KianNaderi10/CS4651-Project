@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Predict | Leaderboard</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Arial, sans-serif;
+    background: #f4f6fb;
+    color: #1f2937;
+    min-height: 100vh;
+  }
+
+  header {
+    background: #1e3a8a;
+    color: white;
+    padding: 22px 8%;
+  }
+
+  header h1 { margin: 0; font-size: 28px; }
+  header p { margin: 6px 0 0; color: #dbeafe; }
+
+  main {
+    width: min(1000px, 90%);
+    margin: 30px auto;
+  }
+
+  .card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+  }
+
+  .card h2 {
+    margin-top: 0;
+    color: #1e3a8a;
+    margin-bottom: 20px;
+  }
+
+  .podium {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 8px;
+  }
+
+  .podium-slot {
+    flex: 1;
+    max-width: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .podium-slot.first { order: 2; }
+  .podium-slot.second { order: 1; }
+  .podium-slot.third { order: 3; }
+
+  .medal {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 18px;
+    color: white;
+  }
+
+  .first .medal  { background: #ca8a04; width: 60px; height: 60px; font-size: 22px; }
+  .second .medal { background: #6b7280; }
+  .third .medal  { background: #92400e; }
+
+  .podium-name { font-weight: 700; font-size: 14px; color: #1f2937; text-align: center; }
+  .podium-pts  { font-size: 13px; color: #2563eb; font-weight: 600; }
+
+  .podium-bar {
+    width: 100%;
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    color: #6b7280;
+    border: 1px solid #e2e8f0;
+    border-bottom: none;
+  }
+
+  .first .podium-bar  { background: #fef9c3; height: 80px; }
+  .second .podium-bar { background: #f1f5f9; height: 56px; }
+  .third .podium-bar  { background: #fdf4ea; height: 40px; }
+
+  .rankings-header {
+    display: grid;
+    grid-template-columns: 60px 1fr 120px;
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: #6b7280;
+    border-bottom: 2px solid #e2e8f0;
+    letter-spacing: 0.05em;
+  }
+
+  .ranking-row {
+    display: grid;
+    grid-template-columns: 60px 1fr 120px;
+    padding: 14px 16px;
+    align-items: center;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.15s;
+  }
+  .ranking-row:last-child { border-bottom: none; }
+  .ranking-row:hover { background: #f8faff; }
+
+  .rank-num { font-weight: 700; font-size: 15px; color: #94a3b8; }
+  .player-name { font-weight: 600; font-size: 15px; color: #1f2937; }
+  .points { font-size: 14px; color: #2563eb; font-weight: 700; text-align: right; }
+  .pts-label { font-size: 11px; color: #94a3b8; margin-left: 3px; }
+
+  .empty { text-align: center; padding: 32px; color: #94a3b8; font-size: 14px; }
+
+  .refresh-btn {
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 7px;
+    padding: 9px 18px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 20px;
+  }
+  .refresh-btn:hover { background: #1d4ed8; }
+
+  .status-bar {
+    text-align: center;
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Predict: Live Polls</h1>
+  <p>Leaderboard</p>
+</header>
+
+<main>
+  <div class="card">
+    <h2>Top Players</h2>
+    <button class="refresh-btn" onclick="loadLeaderboard()">↻ Refresh</button>
+    <div class="podium" id="podium"></div>
+    <div class="rankings-header">
+      <span>Rank</span>
+      <span>Player</span>
+      <span style="text-align:right">Points</span>
+    </div>
+    <div id="rankings-body"></div>
+    <div class="status-bar" id="status-text">Loading...</div>
+  </div>
+</main>
+
+<script>
+  const API = "http://18.225.180.51:3000/api";
+  const MEDAL_CLASSES = ['first', 'second', 'third'];
+  const POSITIONS = ['1st', '2nd', '3rd'];
+
+  async function loadLeaderboard() {
+    document.getElementById('status-text').textContent = 'Refreshing...';
+    try {
+      const res = await fetch(`${API}/leaderboard`);
+      const data = await res.json();
+      renderPodium(data.slice(0, 3));
+      renderRankings(data.slice(3));
+      document.getElementById('status-text').textContent = `Updated just now · ${data.length} players`;
+    } catch (err) {
+      document.getElementById('status-text').textContent = 'Could not reach server';
+      document.getElementById('rankings-body').innerHTML = '<div class="empty">Unable to load leaderboard.</div>';
+    }
+  }
+
+  function renderPodium(top3) {
+    const podium = document.getElementById('podium');
+    if (top3.length === 0) { podium.innerHTML = ''; return; }
+    podium.innerHTML = top3.map((p, i) => `
+      <div class="podium-slot ${MEDAL_CLASSES[i]}">
+        <div class="medal">${i + 1}</div>
+        <div class="podium-name">${p.username}</div>
+        <div class="podium-pts">${p.total_points} pts</div>
+        <div class="podium-bar">${POSITIONS[i]}</div>
+      </div>
+    `).join('');
+  }
+
+  function renderRankings(rest) {
+    const body = document.getElementById('rankings-body');
+    if (rest.length === 0) { body.innerHTML = '<div class="empty">No other players yet.</div>'; return; }
+    body.innerHTML = rest.map(p => `
+      <div class="ranking-row">
+        <span class="rank-num">#${p.player_rank}</span>
+        <span class="player-name">${p.username}</span>
+        <span class="points">${p.total_points}<span class="pts-label">pts</span></span>
+      </div>
+    `).join('');
+  }
+
+  loadLeaderboard();
+</script>
+</body>
+</html>

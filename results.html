@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Predict | Your Result</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Arial, sans-serif;
+    background: #f4f6fb;
+    color: #1f2937;
+    min-height: 100vh;
+  }
+
+  header {
+    background: #1e3a8a;
+    color: white;
+    padding: 22px 8%;
+  }
+
+  header h1 { margin: 0; font-size: 28px; }
+  header p { margin: 6px 0 0; color: #dbeafe; }
+
+  main {
+    width: min(600px, 90%);
+    margin: 30px auto;
+  }
+
+  .card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+  }
+
+  .card h2 {
+    margin-top: 0;
+    color: #1e3a8a;
+    margin-bottom: 20px;
+  }
+
+  .result-card { border-radius: 10px; padding: 24px; text-align: center; margin-bottom: 20px; }
+  .result-card.correct { background: #f0fdf4; border: 1px solid #bbf7d0; }
+  .result-card.incorrect { background: #fef2f2; border: 1px solid #fecaca; }
+
+  .result-icon { font-size: 52px; margin-bottom: 12px; display: block; }
+
+  .result-label {
+    font-size: 13px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+  }
+  .correct .result-label { color: #16a34a; }
+  .incorrect .result-label { color: #dc2626; }
+
+  .result-question {
+    font-size: 17px;
+    font-weight: bold;
+    color: #1f2937;
+    margin-bottom: 18px;
+    line-height: 1.4;
+  }
+
+  .answers-stack { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; text-align: left; }
+
+  .answer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-radius: 8px;
+  }
+
+  .answer-row.your { background: #f1f5f9; border: 1px solid #e2e8f0; }
+  .answer-row.correct-row { background: #f0fdf4; border: 1px solid #bbf7d0; }
+  .answer-row.wrong-row { background: #fef2f2; border: 1px solid #fecaca; }
+
+  .answer-row-label { font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; }
+  .answer-row-value { font-size: 15px; font-weight: bold; }
+  .answer-row.your .answer-row-value { color: #1f2937; }
+  .answer-row.correct-row .answer-row-value { color: #16a34a; }
+  .answer-row.wrong-row .answer-row-value { color: #dc2626; }
+
+  .points-earned { font-size: 40px; font-weight: 900; margin-bottom: 4px; }
+  .correct .points-earned { color: #16a34a; }
+  .incorrect .points-earned { color: #dc2626; }
+  .points-sub { font-size: 13px; color: #6b7280; }
+
+  .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+
+  .stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+    border-top: 3px solid #1e3a8a;
+  }
+
+  .stat-value { font-size: 28px; font-weight: 900; color: #1e3a8a; margin-bottom: 4px; }
+  .stat-label { font-size: 12px; font-weight: bold; text-transform: uppercase; color: #6b7280; letter-spacing: 0.08em; }
+
+  .actions { display: flex; gap: 12px; }
+
+  .btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s;
+  }
+
+  .btn-primary { background: #2563eb; color: white; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-secondary { background: white; color: #1e3a8a; border: 1px solid #cbd5e1; }
+  .btn-secondary:hover { background: #f1f5f9; }
+
+  .demo-controls {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .demo-btn {
+    background: white;
+    border: 1px solid #cbd5e1;
+    color: #6b7280;
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+  }
+  .demo-btn:hover { border-color: #2563eb; color: #2563eb; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Predict: Live Polls</h1>
+  <p>Your Result</p>
+</header>
+
+<main>
+  <div class="result-card" id="result-card">
+    <div class="result-question" id="result-question"></div>
+    <span class="result-icon" id="result-icon">⏳</span>
+    <div class="result-label" id="result-label">Loading...</div>
+    <div class="answers-stack" id="answers-stack"></div>
+    <div class="points-earned" id="points-earned"></div>
+    <div class="points-sub" id="points-sub"></div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-value" id="total-points">—</div>
+      <div class="stat-label">Total Points</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="player-rank">—</div>
+      <div class="stat-label">Current Rank</div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-secondary" onclick="window.location.href='leaderboard.html'">View Leaderboard</button>
+    <button class="btn btn-primary" onclick="window.location.href='player.html'">Back to Polls</button>
+  </div>
+
+  <!-- Remove before final submission -->
+  <div class="demo-controls">
+    <span style="font-size:11px;color:#94a3b8;align-self:center;">Preview:</span>
+    <button class="demo-btn" onclick="showCorrect()">✓ Correct answer</button>
+    <button class="demo-btn" onclick="showIncorrect()">✗ Wrong answer</button>
+  </div>
+</main>
+
+<script>
+  const API = "http://18.225.180.51:3000/api";
+
+  function renderResult({ correct, question, yourAnswer, correctAnswer, pointsEarned, totalPoints, rank }) {
+    const card = document.getElementById('result-card');
+    card.className = `result-card ${correct ? 'correct' : 'incorrect'}`;
+    document.getElementById('result-question').textContent = question;
+    document.getElementById('result-icon').textContent = correct ? '🎯' : '❌';
+    document.getElementById('result-label').textContent = correct ? 'Correct Prediction!' : 'Wrong Prediction';
+    document.getElementById('answers-stack').innerHTML = `
+      <div class="answer-row your">
+        <span class="answer-row-label">Your Answer</span>
+        <span class="answer-row-value">${yourAnswer}</span>
+      </div>
+      <div class="answer-row ${correct ? 'correct-row' : 'wrong-row'}">
+        <span class="answer-row-label">Correct Answer</span>
+        <span class="answer-row-value">${correctAnswer}</span>
+      </div>
+    `;
+    document.getElementById('points-earned').textContent = correct ? `+${pointsEarned}` : '+0';
+    document.getElementById('points-sub').textContent = correct ? 'points earned' : 'no points this round';
+    document.getElementById('total-points').textContent = totalPoints;
+    document.getElementById('player-rank').textContent = `#${rank}`;
+  }
+
+  function showCorrect() {
+    renderResult({ correct: true, question: 'Will it rain on Thursday?', yourAnswer: 'Yes', correctAnswer: 'Yes', pointsEarned: 10, totalPoints: 30, rank: 1 });
+  }
+
+  function showIncorrect() {
+    renderResult({ correct: false, question: 'Will it rain on Thursday?', yourAnswer: 'No', correctAnswer: 'Yes', pointsEarned: 0, totalPoints: 10, rank: 4 });
+  }
+
+  showCorrect();
+</script>
+</body>
+</html>
